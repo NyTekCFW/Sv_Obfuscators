@@ -25,13 +25,13 @@ int main()
 		std::cout << "\n===== RAII OBJECT BASIC TEST =====\n";
 		auto obj = OBF("RAII string", true);
 
-		const char* p1 = obj.unlock();
+		const char* p1 = obj.c_str();
 		std::cout << "Decrypt #1: " << p1 << "\n";
 
 		obj.lock();
 		std::cout << "After recrypt (garbage expected): " << p1 << "\n";
 
-		const char* p2 = obj.unlock();
+		const char* p2 = obj.c_str();
 		std::cout << "Decrypt #2: " << p2 << "\n";
 
 		// pointer stability
@@ -41,11 +41,11 @@ int main()
 		std::cout << "\n===== MULTI DECRYPT TEST =====\n";
 		auto md = OBF("MultiDecrypt", true);
 		for (int i = 0; i < 5; ++i)
-		std::cout << "Decrypt #" << i << ": " << md.unlock() << "\n";
+		std::cout << "Decrypt #" << i << ": " << md.c_str() << "\n";
 
 		std::cout << "\n===== MULTI RECRYPT TEST =====\n";
 		auto mr = OBF("MultiRecrypt", true);
-		const char* pr = mr.unlock();
+		const char* pr = mr.c_str();
 		std::cout << "Initial: " << pr << "\n";
 
 		for (int i = 0; i < 3; ++i)
@@ -54,20 +54,20 @@ int main()
 			std::cout << "Recrypt #" << i << ": " << pr << "\n";
 		}
 
-		std::cout << "Decrypt again: " << mr.unlock() << "\n";
+		std::cout << "Decrypt again: " << mr.c_str() << "\n";
 
 		std::cout << "\n===== MIXED OBJECT TEST =====\n";
 		auto a = OBF("First heavy", true);
 		auto b = OBF("Second light", false);
 
-		std::cout << a.unlock() << "\n";
-		std::cout << b.unlock() << "\n";
+		std::cout << a.c_str() << "\n";
+		std::cout << b.c_str() << "\n";
 
 		a.lock();
 		b.lock();
 
-		std::cout << a.unlock() << "\n";
-		std::cout << b.unlock() << "\n";
+		std::cout << a.c_str() << "\n";
+		std::cout << b.c_str() << "\n";
 
 		std::cout << "\n===== ONE-SHOT UB TEST (EXPECTED) =====\n";
 		const char* ub;
@@ -83,23 +83,23 @@ int main()
 		std::cout << "\n===== LOOP STABILITY TEST =====\n";
 		{
 			auto t = OBF("LoopTest", (0 & 1));
-			std::cout << "[" << 0 << "] " << t.unlock() << "\n";
+			std::cout << "[" << 0 << "] " << t.c_str() << "\n";
 			t.lock();
 
 			auto x = OBF("LoopTest", (1 & 1));
-			std::cout << "[" << 1 << "] " << x.unlock() << "\n";
+			std::cout << "[" << 1 << "] " << x.c_str() << "\n";
 			x.lock();
 
 			auto y = OBF("LoopTest", (2 & 1));
-			std::cout << "[" << 2 << "] " << y.unlock() << "\n";
+			std::cout << "[" << 2 << "] " << y.c_str() << "\n";
 			y.lock();
 
 			auto z = OBF("LoopTest", (3 & 1));
-			std::cout << "[" << 3 << "] " << z.unlock() << "\n";
+			std::cout << "[" << 3 << "] " << z.c_str() << "\n";
 			z.lock();
 
 			auto e = OBF("LoopTest", (4 & 1));
-			std::cout << "[" << 4 << "] " << e.unlock() << "\n";
+			std::cout << "[" << 4 << "] " << e.c_str() << "\n";
 			e.lock();
 		}
 
@@ -133,7 +133,7 @@ int main()
 			for (int i = 0; i < iters; ++i)
 			{
 				auto o = OBF("Bench", true);
-					sink += o.unlock()[0];
+					sink += o.c_str()[0];
 				o.lock();
 			}
 		});

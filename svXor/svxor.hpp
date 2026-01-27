@@ -12,6 +12,7 @@
 # include <cstdint>
 # include <cstddef>
 
+
 namespace svxor
 {
 	//? ============================================================
@@ -20,9 +21,9 @@ namespace svxor
 	//? Used to derive keys from string literals and build metadata.
 	//? This runs entirely at compile-time for string literals.
 	//? ============================================================
-	constexpr uint64_t fnv1a(const char* s, uint64_t h = 1469598103934665603ULL)
+	static constexpr uint64_t fnv1a(const char* s, uint64_t h = 1469598103934665603ULL)
 	{
-		return ((*s) ? (fnv1a(s + 1, (h ^ uint8_t(*s)) * 1099511628211ULL)) : (h));
+		return ((*s) ? (fnv1a(s + 1, (h ^ static_cast<uint8_t>(*s)) * 1099511628211ULL)) : (h));
 	}
 
 	//? ============================================================
@@ -39,9 +40,7 @@ namespace svxor
 	//? Used to expand character indices at compile-time
 	//? (port in C++11 of std::index_sequence in C++14+).
 	//? ============================================================
-	template<int... I> struct IndexList
-	{
-	};
+	template<int... I> struct IndexList {};
 
 	//? ============================================================
 	//? Append an index to an IndexList
@@ -56,12 +55,12 @@ namespace svxor
 	//? ============================================================
 	//? Generate IndexList<0, 1, 2, ..., N-1>
 	//? ============================================================
-	template<int N> struct MakeIndex
+	template <int N> struct MakeIndex
 	{
 		using type = typename Append<typename MakeIndex<N - 1>::type, N - 1>::type;
 	};
 
-	template<> struct MakeIndex<0>
+	template <> struct MakeIndex<0>
 	{
 		using type = IndexList<>;
 	};
@@ -78,23 +77,12 @@ namespace svxor
 	//? Umix bypass assignation restricted in C++11
 	//? ============================================================
 	
-	constexpr uint64_t	umix(uint64_t k, int u)
+	inline constexpr uint8_t mix(uint64_t k, int i, int u = 0)
 	{
-		return (u == 0 ? umix((k ^ (k >> 33)) * 0xff51afd7ed558ccdULL, 1) : (k ^ (k >> 33)));
+		return (uint8_t((((u == 0) ? (mix((k ^ (k >> 33)) * 0xff51afd7ed558ccdULL, i, 1)) : (k ^ (k >> 33))) + uint64_t(i) * 1315423911u) & 0xFF));
 	}
 
-	constexpr uint8_t mix(uint64_t k, int i)
-	{
-		return (uint8_t((umix(k, 0) + uint64_t(i) * 1315423911u) & 0xFF));
-	}
-
-
-	//? ============================================================
-	//? Compile-time xor of a single character
-	//?
-	//? XORs the character with its derived key byte.
-	//? ============================================================
-	constexpr char xorChar(char c, uint64_t k, int i)
+	static constexpr char xorChar(const char c, uint64_t k, int i)
 	{
 		return (char(uint8_t(c) ^ mix(k, i)));
 	}
@@ -113,10 +101,17 @@ namespace svxor
 	//?  - simple loop
 	//?  - smaller and faster
 	//? ============================================================
-	template<bool HEAVY, typename> class ObfString;
-	template<bool HEAVY, int... I>
-	class ObfString<HEAVY, IndexList<I...>>
+
+
+	template<typename IndexList, bool isHeavy> class ObfString;
+
+	template<int... Index, bool isHeavy>
+	class ObfString<IndexList<Index...>, isHeavy>
 	{
+	private:
+		volatile bool		_locked;
+		volatile uint64_t	_key;
+		volatile char		_data[sizeof...(Index) + 1];
 	public:
 		//? ========================================================
 		//? Compile-time constructor
@@ -124,23 +119,31 @@ namespace svxor
 		//? - xor the string literal at compile-time
 		//? - Derives a unique key using BUILD_KEY + salt
 		//? ========================================================
-		constexpr ObfString(const char* s, uint64_t salt) : key(fnv1a(s, BUILD_KEY^ salt)), data{ xorChar(s[I], key, I)..., 0 }, locked(true)
-		{
-		}
+		inline constexpr ObfString(const char* s, uint64_t salt): _locked(true), _key(salt), _data{ xorChar(s[Index], salt, Index)... } {}
 
 		//? ========================================================
 		//? unlock the string (unxor)
 		//?
 		//? Safe to call multiple times.
 		//? ========================================================
-		const char* unlock(void)
+		inline volatile char* unlock(void)
 		{
-			if (this->locked)
+			if (_locked)
 			{
-				this->xor_buffer();
-				this->locked = false;
+				if (isHeavy)
+				{
+					int dummy[] = { (_data[Index] ^= svxor::mix(_key, Index), 0)... };
+					(void)dummy;
+				}
+				else
+				{
+					for (int i = 0; i < sizeof...(Index); ++i)
+						_data[i] ^= svxor::mix(_key, i);
+				}
+				_data[sizeof...(Index)] = '\0';
+				_locked = false;
 			}
-			return (this->data);
+			return (_data);
 		}
 
 		//? ========================================================
@@ -148,23 +151,33 @@ namespace svxor
 		//?
 		//? Safe to call multiple times.
 		//? ========================================================
-		void lock(void)
+		inline volatile char* lock(void)
 		{
-			if (!this->locked)
+			if (!_locked)
 			{
-				this->xor_buffer();
-				this->locked = true;
+				if (isHeavy)
+				{
+					int dummy[] = { (_data[Index] ^= svxor::mix(_key, Index), 0)... };
+					(void)dummy;
+				}
+				else
+				{
+					for (int i = 0; i < sizeof...(Index); ++i)
+						_data[i] ^= svxor::mix(_key, i);
+				}
+				_data[sizeof...(Index)] = '\0';
+				_locked = true;
 			}
+			return _data;
 		}
 
 		//? ========================================================
 		//? alias for unxor()
 		//? ========================================================
-		const char* c_str(void)
+		inline const char* c_str(void)
 		{
-			return (this->unlock());
+			return (const_cast<const char*>(this->unlock()));
 		}
-
 		//? ========================================================
 		//? Destructor
 		//?
@@ -172,37 +185,12 @@ namespace svxor
 		// ========================================================
 		~ObfString(void)
 		{
-			for (size_t i = 0; i < sizeof...(I); ++i)
+			_key = 0;
+			for (size_t i = 0; i < sizeof...(Index); ++i)
 			{
-				this->data[i] = 0;
+				_data[i] = 0;
 			}
-			this->key = 0;
-		}
-	private:
-		uint64_t	key;					//! Per-string derived key
-		char		data[sizeof...(I) + 1];	//! string buffer (+ null terminator)
-		bool		locked;					//! Tracks current state to avoid double-xor
-
-		//? ========================================================
-		//? XOR the buffer in-place (xor <-> unxor)
-		//?
-		//? Same operation used for unxor and xor.
-		//? ========================================================
-		inline void xor_buffer(void)
-		{
-			if (HEAVY)						//! Unrolled, index-based expansion
-			{
-				int dummy[] = { (this->data[I] ^= mix(this->key, I), 0)... };
-				(void)dummy;
-				return;
-			}
-			else
-			{
-				for (size_t i = 0; i < sizeof...(I); ++i)
-				{
-					this->data[i] ^= mix(this->key, int(i));
-				}
-			}
+			_data[sizeof...(Index)] = 0;
 		}
 	};
 }
@@ -214,7 +202,7 @@ namespace svxor
 //? ============================================================
 //? RAII object (stack-based, safe lifetime)
 //? ============================================================
-# define OBF(s, heavy) svxor::ObfString<heavy, svxor::MakeIndex<sizeof(s)-1>::type>(s, __COUNTER__)
+# define OBF(s, heavy) (svxor::ObfString<svxor::MakeIndex<sizeof(s) - 1>::type, heavy>(s, svxor::BUILD_KEY ^ (uint64_t(__COUNTER__) * 0x9E3779B97F4A7C15ULL)))
 # define OBF_H(s) OBF(s, true)
 # define OBF_L(s) OBF(s, false)
 
@@ -224,7 +212,7 @@ namespace svxor
 //? Intended for immediate use only (printf, comparisons, etc).
 //? ============================================================
 # define OBF_ONCE(s, heavy) OBF(s, heavy).c_str()
-# define OBF_HONCE(s) OBF_H(s).c_str()
-# define OBF_LONCE(s) OBF_L(s).c_str()
+# define OBF_HONCE(s) OBF_ONCE(s, true)
+# define OBF_LONCE(s) OBF_ONCE(s, false)
 
 #endif
