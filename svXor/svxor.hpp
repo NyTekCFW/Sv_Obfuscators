@@ -87,6 +87,11 @@ namespace svxor
 		return (char(uint8_t(c) ^ mix(k, i)));
 	}
 
+	static constexpr char getKeyStream(uint64_t k, int i)
+	{
+		return (mix(k, i));
+	}
+
 	//? ============================================================
 	//? Obfuscated string object (RAII)
 	//?
@@ -112,6 +117,7 @@ namespace svxor
 		volatile bool		_locked;
 		volatile uint64_t	_key;
 		volatile char		_data[sizeof...(Index) + 1];
+		volatile char		_ks[sizeof...(Index) + 1];
 	public:
 		//? ========================================================
 		//? Compile-time constructor
@@ -119,7 +125,7 @@ namespace svxor
 		//? - xor the string literal at compile-time
 		//? - Derives a unique key using BUILD_KEY + salt
 		//? ========================================================
-		inline constexpr ObfString(const char* s, uint64_t salt): _locked(true), _key(salt), _data{ xorChar(s[Index], salt, Index)... } {}
+		inline constexpr ObfString(const char* s, uint64_t salt): _locked(true), _key(salt), _data{ xorChar(s[Index], salt, Index)... }, _ks{ getKeyStream(salt, Index)... } {}
 
 		//? ========================================================
 		//? unlock the string (unxor)
@@ -132,13 +138,15 @@ namespace svxor
 			{
 				if (isHeavy)
 				{
-					int dummy[] = { (_data[Index] ^= svxor::mix(_key, Index), 0)... };
+					int dummy[] = { (_data[Index] ^= (((Index & 3) == ((_key >> 5) & 3)) ? svxor::mix(_key, Index) : _ks[Index]), 0)... };
 					(void)dummy;
 				}
 				else
 				{
 					for (int i = 0; i < sizeof...(Index); ++i)
-						_data[i] ^= svxor::mix(_key, i);
+					{
+						_data[i] ^= _ks[i];
+					}
 				}
 				_data[sizeof...(Index)] = '\0';
 				_locked = false;
@@ -157,13 +165,13 @@ namespace svxor
 			{
 				if (isHeavy)
 				{
-					int dummy[] = { (_data[Index] ^= svxor::mix(_key, Index), 0)... };
+					int dummy[] = { (_data[Index] ^= (((Index & 3) == ((_key >> 5) & 3)) ? svxor::mix(_key, Index) : _ks[Index]), 0)... };
 					(void)dummy;
 				}
 				else
 				{
 					for (int i = 0; i < sizeof...(Index); ++i)
-						_data[i] ^= svxor::mix(_key, i);
+						_data[i] ^= _ks[i];
 				}
 				_data[sizeof...(Index)] = '\0';
 				_locked = true;
@@ -189,8 +197,10 @@ namespace svxor
 			for (size_t i = 0; i < sizeof...(Index); ++i)
 			{
 				_data[i] = 0;
+				_ks[i] = 0;
 			}
 			_data[sizeof...(Index)] = 0;
+			_ks[sizeof...(Index)] = 0;
 		}
 	};
 }
