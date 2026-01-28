@@ -89,7 +89,7 @@ namespace svxor
 
 	static constexpr char getKeyStream(uint64_t k, int i)
 	{
-		return (mix(k, i));
+		return (char(mix(k, i)));
 	}
 
 	//? ============================================================
