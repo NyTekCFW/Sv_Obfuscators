@@ -76,7 +76,7 @@ namespace svxor
 	//? cheap enough for runtime use.
 	//? Umix bypass assignation restricted in C++11
 	//? ============================================================
-	
+
 	inline constexpr uint8_t mix(uint64_t k, int i, int u = 0)
 	{
 		return (uint8_t((((u == 0) ? (mix((k ^ (k >> 33)) * 0xff51afd7ed558ccdULL, i, 1)) : (k ^ (k >> 33))) + uint64_t(i) * 1315423911u) & 0xFF));
@@ -125,7 +125,7 @@ namespace svxor
 		//? - xor the string literal at compile-time
 		//? - Derives a unique key using BUILD_KEY + salt
 		//? ========================================================
-		inline constexpr ObfString(const char* s, uint64_t salt): _locked(true), _key(salt), _data{ xorChar(s[Index], salt, Index)... }, _ks{ getKeyStream(salt, Index)... } {}
+		inline constexpr ObfString(const char* s, uint64_t salt) : _locked(true), _key(salt), _data{ xorChar(s[Index], salt, Index)... }, _ks{ getKeyStream(salt, Index)... } {}
 
 		//? ========================================================
 		//? unlock the string (unxor)
@@ -186,6 +186,12 @@ namespace svxor
 		{
 			return (const_cast<const char*>(this->unlock()));
 		}
+
+		inline const char* c_data(void)
+		{
+			return (const_cast<const char*>(this->_data));
+		}
+
 		//? ========================================================
 		//? Destructor
 		//?
@@ -201,6 +207,15 @@ namespace svxor
 			}
 			_data[sizeof...(Index)] = 0;
 			_ks[sizeof...(Index)] = 0;
+		}
+	};
+	template <typename T, bool heavy>
+	struct ObfHolder
+	{
+		static svxor::ObfString<T, heavy>& get(const char* s, uint64_t key)
+		{
+			static svxor::ObfString<T, heavy> obj(s, key);
+			return (obj);
 		}
 	};
 }
@@ -225,4 +240,24 @@ namespace svxor
 # define OBF_HONCE(s) OBF_ONCE(s, true)
 # define OBF_LONCE(s) OBF_ONCE(s, false)
 
+//# define __SNC__ 1
+# ifndef __SNC__
+//? ============================================================
+//? Static RAII object supported (non-SNC compiler)
+//? ============================================================
+
+#  define OBF_ST(fname, s, heavy) static svxor::ObfString<svxor::MakeIndex<sizeof(s) - 1>::type, heavy>&	obf_##fname(void){static svxor::ObfString<svxor::MakeIndex<sizeof(s) - 1>::type, heavy> s_##fname = OBF(s, heavy); return (s_##fname);}
+#  define OBF_STL(fname, s) OBF_ST(fname, s, false)
+#  define OBF_STH(fname, s) OBF_ST(fname, s, true)
+
+# else
+//? ============================================================
+//? SNC compiler: no static RAII objects allowed
+//? Lazy-initialized static char buffer instead
+//? ============================================================
+
+#  define OBF_ST(fname, s, heavy) static const char*	obf_##fname(void) {static char s_##fname[sizeof(s)] = { 0 }; if (!s_##fname[0]){ auto obj_##fname = OBF(s, heavy); obj_##fname.unlock(); for (int i = 0; i < sizeof(s); ++i){s_##fname[i] = obj_##fname.c_data()[i];}} return (s_##fname);}
+#  define OBF_STL(fname, s) OBF_ST(fname, s, false)
+#  define OBF_STH(fname, s) OBF_ST(fname, s, true)
+# endif
 #endif
