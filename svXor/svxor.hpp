@@ -53,17 +53,52 @@ namespace svxor
 	};
 
 	//? ============================================================
-	//? Generate IndexList<0, 1, 2, ..., N-1>
+	//? Generate IndexList<0..N-1> with logarithmic recursion
+	//? (safe for long compile-time strings).
 	//? ============================================================
-	template <int N> struct MakeIndex
+	template<typename A, typename B> struct Concat;
+
+	template<int... A, int... B>
+	struct Concat<IndexList<A...>, IndexList<B...>>
 	{
-		using type = typename Append<typename MakeIndex<N - 1>::type, N - 1>::type;
+		using type = IndexList<A..., B...>;
 	};
 
-	template <> struct MakeIndex<0>
+	template<typename L, int Offset> struct AddOffset;
+
+	template<int... I, int Offset>
+	struct AddOffset<IndexList<I...>, Offset>
+	{
+		using type = IndexList<(I + Offset)...>;
+	};
+	
+	template<int N> struct MakeIndex
+	{
+	private:
+		static constexpr int half = N / 2;
+
+		using first  = typename MakeIndex<half>::type;
+		using second = typename MakeIndex<N - half>::type;
+
+		using shifted = typename AddOffset<second, half>::type;
+
+	public:
+		using type = typename Concat<first, shifted>::type;
+	};
+
+	template<>
+	struct MakeIndex<0>
 	{
 		using type = IndexList<>;
 	};
+
+	template<>
+	struct MakeIndex<1>
+	{
+		using type = IndexList<0>;
+	};
+
+
 
 	//? ============================================================
 	//? Key mixing function
