@@ -25,7 +25,7 @@ namespace PointerObfuscator
 	#ifndef __SNC__
 		[[gnu::always_inline]] inline
 	# else
-		inline __attribute(always_inline) 
+		inline __attribute__((always_inline))
 	#endif
 	uintptr_t**	tab(uintptr_t** tab, const uintptr_t key) noexcept
 	{
@@ -35,7 +35,7 @@ namespace PointerObfuscator
 	#ifndef __SNC__
 		[[gnu::always_inline]] inline
 	# else
-		inline __attribute(always_inline) 
+		inline __attribute__((always_inline))
 	#endif
 	uintptr_t*	data(uintptr_t* ptr, const uintptr_t key) noexcept
 	{
@@ -46,7 +46,7 @@ namespace PointerObfuscator
 	#ifndef __SNC__
 		[[gnu::always_inline]] inline
 	# else
-		inline __attribute(always_inline) 
+		inline __attribute__((always_inline))
 	#endif
 	//? decodeTableAddress == true  : table address is obfuscated.
 	//? decodeTableAddress == false : only the entries are obfuscated.

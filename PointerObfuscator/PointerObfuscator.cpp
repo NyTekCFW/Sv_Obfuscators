@@ -6,13 +6,13 @@
 
 #include "./PointerObfuscator.hpp"
 
-# ifndef __SNC__
+#ifndef __SNC__
 //? ============================================================
 //? Based on std::chrono (non-SNC compiler)
 //? ============================================================
 # include <chrono>
-#if defined(_MSC_VER)
-    #include <intrin.h>
+# if defined(_MSC_VER)
+   #include <intrin.h>
 #endif
 
 static inline uint64_t getTick(void)
@@ -38,12 +38,14 @@ static inline uint64_t getReturnAddress()
 //? SNC compiler: private code
 //? ============================================================
 
-static inline __attribute(always_inline) uint64_t getTick(void)
+#include "../Core/System/scheduler.hpp"
+
+static inline __attribute__((always_inline)) uint64_t getTick(void)
 {
 	return (svsc::scheduler::tick());//private library
 }
 
-static inline __attribute(always_inline) uint64_t getReturnAddress()
+static inline __attribute__((always_inline)) uint64_t getReturnAddress()
 {
 	return (reinterpret_cast<uint64_t>(__builtin_return_address()));
 }
