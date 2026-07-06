@@ -20,7 +20,6 @@
 namespace PointerObfuscator
 {
 	uintptr_t			createKey(uintptr_t** tab) noexcept;
-	uintptr_t**			update(uintptr_t** tab, uintptr_t& ckey, size_t elementsCount) noexcept;
 
 	#ifndef __SNC__
 		[[gnu::always_inline]] inline
@@ -72,6 +71,29 @@ namespace PointerObfuscator
 		for (size_t i = 0; i < elementsCount; ++i)
 			dest[i] = PointerObfuscator::data(src[i], key);
 		return true;
+	}
+
+	//? [return tab location obfuscated (only on allocated tab)] PointerObfuscator::update([current tab], [current key], [elements number of tab])
+	//? decodeTableAddress == true  : table address is obfuscated.
+	//? decodeTableAddress == false : only the entries are obfuscated.
+	template <bool decodeTableAddress>
+	uintptr_t** update(uintptr_t** tab, uintptr_t& ckey, size_t elementsCount) noexcept
+	{
+		uintptr_t key = 0;
+
+		if (!tab)
+			return (nullptr);
+		if (decodeTableAddress)
+			tab = PointerObfuscator::tab(tab, ckey);
+		key = PointerObfuscator::createKey(tab);
+		for (size_t i = 0; i < elementsCount; ++i)
+		{
+			if (!tab[i])
+				continue;
+			tab[i] = PointerObfuscator::data(PointerObfuscator::data(tab[i], ckey), key);
+		}
+		ckey = key;
+		return (PointerObfuscator::tab(tab, ckey));
 	}
 };
 

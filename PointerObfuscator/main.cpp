@@ -54,7 +54,7 @@ void allocatedEx(void)
 		++i;
 	}
 	std::cout << "Update Key:" << std::endl;
-	tab = PointerObfuscator::update(tab, g_AllocKey, 4);
+	tab = PointerObfuscator::update<true>(tab, g_AllocKey, 4);
 	std::cout << "[allocatedEx] Tab Address: " << PointerObfuscator::tab(tab, g_AllocKey) << " <- Base / Obfuscated -> " << tab << std::endl;
 	i = 0;
 	while (i < 4)
@@ -112,7 +112,7 @@ void staticEx(void)
 		++i;
 	}
 	std::cout << "Update Key:" << std::endl;
-	tabLoc = PointerObfuscator::update(tabLoc, g_staticKey, 4);
+	tabLoc = PointerObfuscator::update<false>(g_data, g_staticKey, 4);
 	std::cout << "[StaticEx] Tab Address: " << PointerObfuscator::tab(tabLoc, g_staticKey) << " <- Base / Obfuscated -> " << tabLoc << std::endl;
 	i = 0;
 	while (i < 4)

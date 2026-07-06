@@ -55,28 +55,3 @@ uintptr_t	PointerObfuscator::createKey(uintptr_t** tab) noexcept
 {
 	return (static_cast<uintptr_t>(((getTick() ^ reinterpret_cast<uint64_t>(tab) ^ getReturnAddress()) & ~uintptr_t(3)) + 1));
 }
-#include <iostream>
-
-//? [return tab location obfuscated (only on allocated tab)] PointerObfuscator::update([current tab of ptr], [current key], [elements number of tab])
-uintptr_t** PointerObfuscator::update(uintptr_t** tab, uintptr_t& ckey, size_t elementsCount) noexcept
-{
-	uintptr_t	key = 0;
-	size_t		i = 0;
-
-	if (!tab)
-		return (nullptr);
-	tab = PointerObfuscator::tab(tab, ckey);//!decrypt
-	key = PointerObfuscator::createKey(tab);
-	while (i < elementsCount)
-	{
-		if (!tab[i])
-		{
-			++i;
-			continue;
-		}
-		tab[i] = PointerObfuscator::data(PointerObfuscator::data(tab[i], ckey), key);
-		++i;
-	}
-	ckey = key;
-	return (PointerObfuscator::tab(tab, ckey));
-}
