@@ -7,4 +7,4 @@ They are intended to prevent trivial string inspection and casual modification.
 
 ## Modules
 - svXor: Compile-time string obfuscation (C++11 +)
-- (more to come)
+- PointerObfuscator runtime obfuscation (C++11 +)
